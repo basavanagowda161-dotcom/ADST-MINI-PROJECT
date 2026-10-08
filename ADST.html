@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ADST | Project Analytics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg:#f4f6fb; --card:#fff; --ink:#20283a; --muted:#8490a3;
+      --line:#e8ecf3; --blue:#4378f5; --violet:#6f5ce7;
+      --teal:#19b8a6; --orange:#f47c45; --pink:#d84b9a;
+      --shadow:0 8px 26px #263a650c;
+    }
+    * { box-sizing:border-box }
+    body { margin:0; background:var(--bg); color:var(--ink);
+      font:14px Inter, ui-sans-serif, system-ui, Segoe UI, Arial,sans-serif }
+    .layout { min-height:100vh; display:grid; grid-template-columns:225px 1fr }
+    aside { background:#fff; border-right:1px solid var(--line); padding:25px 17px;
+      display:flex; flex-direction:column }
+    .brand { display:flex; gap:11px; align-items:center; font-weight:800;
+      font-size:16px; margin-bottom:42px }
+    .brand-icon { background:linear-gradient(135deg,#527df4,#765ce8);
+      width:37px;height:37px;border-radius:12px;display:grid;place-items:center;color:white }
+    .brand small { display:block; font-size:9px; letter-spacing:1.4px;
+      color:#9aa4b4; margin-top:4px }
+    .nav-title { color:#a1aabb; font-size:10px; letter-spacing:1.4px;
+      font-weight:700; padding:0 11px 12px }
+    .nav { padding:12px 11px; color:#788397; border-radius:9px;
+      margin:3px 0; font-size:13px }
+    .nav.active { background:#eef2ff; color:#4a68dc; font-weight:700 }
+    .aside-foot { margin-top:auto; padding:16px 8px 0; border-top:1px solid var(--line);
+      color:#8792a3; font-size:11px }
+    main { min-width:0; padding:0 30px 30px; max-width:1600px; width:100%; margin:auto }
+    .topbar { height:65px; display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1px solid var(--line); color:#8993a4; font-size:12px }
+    .topbar strong { color:#3c4658 }
+    .user { border-radius:50%; width:32px;height:32px;display:grid;place-items:center;
+      background:#e9edff;color:#526cdb;font-weight:700 }
+    .intro { display:flex; justify-content:space-between; align-items:center;
+      gap:18px; padding:27px 0 19px }
+    .kicker { color:#5877eb; text-transform:uppercase; letter-spacing:1.5px;
+      font-weight:800; font-size:10px }
+    h1 { margin:7px 0 5px; font-size:26px; letter-spacing:-.8px }
+    .intro p,.hint { margin:0; color:var(--muted); font-size:12px }
+    .actions { display:flex; gap:9px; align-items:center; flex-wrap:wrap }
+    button,.upload { border:0; border-radius:8px; padding:10px 14px;
+      font-weight:700; font-size:12px; cursor:pointer }
+    .upload { background:var(--blue); color:#fff; box-shadow:0 5px 14px #4378f533 }
+    .upload input { display:none }
+    .filters { display:flex; align-items:center; flex-wrap:wrap; gap:9px;
+      background:var(--card); border:1px solid var(--line); border-radius:12px;
+      padding:13px 15px; box-shadow:var(--shadow); margin-bottom:15px }
+    .filters label { color:#8791a1; font-size:11px; font-weight:700 }
+    select { background:#fff; color:#485365; border:1px solid var(--line);
+      border-radius:7px; padding:8px 10px; font-size:11px; max-width:180px }
+    .reset { color:#5d6fe0; background:#f0f2ff }
+    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:13px; margin-bottom:15px }
+    .stat,.chart-card { background:var(--card); border:1px solid var(--line);
+      border-radius:12px; box-shadow:var(--shadow) }
+    .stat { padding:15px 17px }
+    .stat label { color:#7e899a; font-size:11px; font-weight:600 }
+    .stat strong { display:block; margin-top:8px; font-size:23px; letter-spacing:-.5px }
+    .chart-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px }
+    .chart-card { min-width:0; padding:15px 16px 13px }
+    .chart-head { display:flex; align-items:flex-start; justify-content:space-between;
+      gap:8px; margin-bottom:8px }
+    h2 { margin:0 0 4px; font-size:13px }
+    .hint { font-size:10px }
+    .chart-box { height:220px; position:relative }
+    .mapping { display:flex; gap:5px }
+    .mapping select { max-width:105px; padding:5px; font-size:9px }
+    .status { color:#8792a3; font-size:11px; padding:10px 0 }
+    @media(max-width:1100px) {
+      .layout { grid-template-columns:185px 1fr }
+      .chart-grid { grid-template-columns:repeat(2,minmax(0,1fr)) }
+      main { padding:0 19px 24px }
+    }
+    @media(max-width:700px) {
+      .layout { grid-template-columns:1fr }
+      aside { display:none }
+      main { padding:0 12px 22px }
+      .chart-grid { grid-template-columns:1fr }
+      .stats { grid-template-columns:repeat(2,1fr) }
+      .intro { align-items:flex-start; flex-direction:column }
+      .chart-box { height:235px }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand"><span class="brand-icon">A</span>
+      <span>ADST<small>PROJECT ANALYTICS</small></span></div>
+    <div class="nav-title">WORKSPACE</div>
+    <div class="nav active">◫ &nbsp; Overview</div>
+    <div class="nav">▤ &nbsp; Sales analysis</div>
+    <div class="nav">⌁ &nbsp; Trends</div>
+    <div class="aside-foot">● &nbsp; Data stays in your browser</div>
+  </aside>
+
+  <main>
+    <header class="topbar"><span>Workspace　/　<strong>Project overview</strong></span>
+      <span class="user">AD</span></header>
+
+    <section class="intro">
+      <div><div class="kicker">● &nbsp; ADST MINI REPORT</div>
+        <h1>Sales & performance</h1>
+        <p>Interactive view of revenue, profit, regions and product activity.</p></div>
+      <div class="actions">
+        <label class="upload">＋ Import CSV
+          <input id="file" type="file" accept=".csv,text/csv">
+        </label>
+      </div>
+    </section>
+
+    <section class="filters">
+      <label>Filter by</label>
+      <select id="regionFilter"><option value="">All regions</option></select>
+      <select id="channelFilter"><option value="">All channels</option></select>
+      <select id="yearFilter"><option value="">All years</option></select>
+      <button class="reset" id="reset">Reset filters</button>
+      <span class="status" id="status">Import your CSV to load the report.</span>
+    </section>
+
+    <section class="stats">
+      <article class="stat"><label>Total Revenue</label><strong id="revenueTotal">—</strong></article>
+      <article class="stat"><label>Total Profit</label><strong id="profitTotal">—</strong></article>
+      <article class="stat"><label>Units Sold</label><strong id="unitsTotal">—</strong></article>
+      <article class="stat"><label>Records</label><strong id="recordTotal">—</strong></article>
+    </section>
+
+    <section class="chart-grid">
+      <article class="chart-card"><div class="chart-head"><div><h2>Revenue by Region</h2>
+        <p class="hint">Share of revenue across regions</p></div></div><div class="chart-box"><canvas id="c1"></canvas></div></article>
+      <article class="chart-card"><div class="chart-head"><div><h2>Revenue by Year</h2>
+        <p class="hint">Annual revenue trend</p></div></div><div class="chart-box"><canvas id="c2"></canvas></div></article>
+      <article class="chart-card"><div class="chart-head"><div><h2>Profit by Year</h2>
+        <p class="hint">Annual profit trend</p></div></div><div class="chart-box"><canvas id="c3"></canvas></div></article>
+      <article class="chart-card"><div class="chart-head"><div><h2>Profit by Sales Channel</h2>
+        <p class="hint">Contribution by channel</p></div></div><div class="chart-box"><canvas id="c4"></canvas></div></article>
+      <article class="chart-card"><div class="chart-head"><div><h2>Records by Region & Channel</h2>
+        <p class="hint">Record count by region</p></div></div><div class="chart-box"><canvas id="c5"></canvas></div></article>
+      <article class="chart-card"><div class="chart-head"><div><h2>Units by Vehicle Type & Channel</h2>
+        <p class="hint">Units sold by vehicle type</p></div></div><div class="chart-box"><canvas id="c6"></canvas></div></article>
+    </section>
+  </main>
+</div>
+
+<script>
+  let rows = [], fields = [], charts = [];
+  const $ = id => document.getElementById(id);
+  const colors = ["#4378f5","#725ce7","#19b8a6","#f47c45","#d84b9a","#f0b644","#42a5d8"];
+
+  // Match common column-name variations to the fields used by the report.
+  function findField(names) {
+    const normalized = fields.map(f => [f, f.toLowerCase().replace(/[^a-z0-9]/g,"")]);
+    for (const name of names) {
+      const target = name.toLowerCase().replace(/[^a-z0-9]/g,"");
+      const match = normalized.find(([,key]) => key === target);
+      if (match) return match[0];
+    }
+    return "";
+  }
+  function field(role) {
+    const aliases = {
+      region:["Region","Sales_Region","Geography"],
+      revenue:["Revenue_USD","Revenue","Sales","Amount"],
+      profit:["Profit_USD","Profit","Net_Profit"],
+      year:["Year","Order_Year","Date_Year"],
+      channel:["Sales_Channel","Channel"],
+      vehicle:["Vehicle_Type","Vehicle","Product_Type"],
+      units:["Units_Sold","Units","Quantity"]
+    };
+    return findField(aliases[role]);
+  }
+  function sum(list, key) {
+    return list.reduce((total,row) => total + (Number(row[key]) || 0), 0);
+  }
+  function aggregate(list, category, measure, mode="sum") {
+    const result = {};
+    list.forEach(row => {
+      const label = row[category] || "(blank)";
+      result[label] = (result[label] || 0) +
+        (mode === "count" ? 1 : (Number(row[measure]) || 0));
+    });
+    return Object.entries(result).sort((a,b) =>
+      mode === "sum" ? b[1]-a[1] : a[0].localeCompare(b[0],undefined,{numeric:true})
+    );
+  }
+  function setSelect(id, values, title) {
+    const select = $(id), previous = select.value;
+    select.innerHTML = `<option value="">${title}</option>` +
+      [...new Set(values.filter(Boolean))].sort((a,b)=>
+        String(a).localeCompare(String(b),undefined,{numeric:true})
+      ).map(v=>`<option value="${String(v).replaceAll("&","&amp;").replaceAll('"',"&quot;")}">${v}</option>`).join("");
+    if (values.includes(previous)) select.value = previous;
+  }
+  function filtered() {
+    const region=field("region"), channel=field("channel"), year=field("year");
+    return rows.filter(r =>
+      (!$("regionFilter").value || r[region] === $("regionFilter").value) &&
+      (!$("channelFilter").value || r[channel] === $("channelFilter").value) &&
+      (!$("yearFilter").value || r[year] === $("yearFilter").value)
+    );
+  }
+  function makeChart(id,type,labels,values,label,options={}) {
+    const index = Number(id.slice(1))-1;
+    const config = {
+      type,
+      data:{labels,datasets:[{
+        label, data:values, backgroundColor: options.multi
+          ? labels.map((_,i)=>colors[i%colors.length])
+          : (type==="line" ? colors[0] : colors),
+        borderColor: type==="line" ? colors[0] : "#fff",
+        borderWidth: type==="line" ? 2 : 1,
+        fill: !!options.fill, tension:.35,
+        pointRadius:type==="line"?2:0
+      }]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:type==="doughnut"||type==="pie"||!!options.multi,
+          position:"bottom",labels:{boxWidth:9,font:{size:9}}}},
+        scales:["pie","doughnut"].includes(type) ? {} : {
+          x:{stacked:!!options.multi,grid:{display:false},ticks:{font:{size:9},maxRotation:0}},
+          y:{stacked:!!options.multi,beginAtZero:true,grid:{color:"#edf0f5"},
+            ticks:{font:{size:9},maxTicksLimit:5}}
+        }
+      }
+    };
+    if (charts[index]) { charts[index].destroy(); }
+    charts[index]=new Chart($(id),config);
+  }
+  function update() {
+    if (!rows.length) return;
+    const data=filtered();
+    const region=field("region"), revenue=field("revenue"), profit=field("profit");
+    const year=field("year"), channel=field("channel"), vehicle=field("vehicle"), units=field("units");
+
+    $("revenueTotal").textContent=revenue?sum(data,revenue).toLocaleString(undefined,{maximumFractionDigits:0}):"—";
+    $("profitTotal").textContent=profit?sum(data,profit).toLocaleString(undefined,{maximumFractionDigits:0}):"—";
+    $("unitsTotal").textContent=units?sum(data,units).toLocaleString():"—";
+    $("recordTotal").textContent=data.length.toLocaleString();
+    $("status").textContent=`Showing ${data.length.toLocaleString()} of ${rows.length.toLocaleString()} rows`;
+
+    let a=region?aggregate(data,region,revenue):[];
+    makeChart("c1","doughnut",a.map(x=>x[0]),a.map(x=>x[1]),"Revenue");
+
+    a=year?aggregate(data,year,revenue):[];
+    makeChart("c2","line",a.map(x=>x[0]),a.map(x=>x[1]),"Revenue",{fill:true});
+
+    a=year?aggregate(data,year,profit):[];
+    makeChart("c3","line",a.map(x=>x[0]),a.map(x=>x[1]),"Profit");
+
+    a=channel?aggregate(data,channel,profit):[];
+    makeChart("c4","doughnut",a.map(x=>x[0]),a.map(x=>x[1]),"Profit");
+
+    a=region?aggregate(data,region,"","count"):[];
+    makeChart("c5","bar",a.map(x=>x[0]),a.map(x=>x[1]),"Records");
+
+    a=vehicle?aggregate(data,vehicle,units||"","sum"):[];
+    makeChart("c6","bar",a.map(x=>x[0]),a.map(x=>x[1]),"Units");
+  }
+  $("file").addEventListener("change",event=>{
+    const file=event.target.files[0]; if(!file) return;
+    Papa.parse(file,{header:true,skipEmptyLines:true,dynamicTyping:false,complete(result){
+      rows=result.data; fields=result.meta.fields||[];
+      if(!rows.length){$("status").textContent="No data rows found in this CSV.";return}
+      setSelect("regionFilter",rows.map(r=>r[field("region")]),"All regions");
+      setSelect("channelFilter",rows.map(r=>r[field("channel")]),"All channels");
+      setSelect("yearFilter",rows.map(r=>r[field("year")]),"All years");
+      $("status").textContent=`Loaded ${file.name}`;
+      update();
+    }});
+  });
+  ["regionFilter","channelFilter","yearFilter"].forEach(id=>$(id).addEventListener("change",update));
+  $("reset").addEventListener("click",()=>{
+    ["regionFilter","channelFilter","yearFilter"].forEach(id=>$(id).value="");
+    update();
+  });
+</script>
+</body>
+</html>
